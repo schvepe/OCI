@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Cliboci",
+        "repositoryURL": "/Users/schvepe/Documents/swift/Cliboci",
+        "state": {
+          "branch": null,
+          "revision": "d64159d7782cca3b033a6d826d1ad2803a816565",
+          "version": "0.0.8"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
