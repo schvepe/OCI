@@ -8,34 +8,56 @@
 
 import Foundation
 import Cliboci
-public class  Connection {
-    let envhpp = UnsafeMutablePointer<OpaquePointer?>.init(bitPattern: 0)
-    let srvhp  = OpaquePointer.init(bitPattern: 0)
-    let errhp  = OpaquePointer.init(bitPattern: 0)
-    let usrhp  = OpaquePointer.init(bitPattern: 0)
-    let svchp  = OpaquePointer.init(bitPattern: 0)
+public class Connection {
+    var envhpp:OpaquePointer?
+    var srvhp:UnsafeMutableRawPointer?
+    var errhp:UnsafeMutableRawPointer?
+    var usrhp:UnsafeMutableRawPointer?
+    var svchp:UnsafeMutableRawPointer?
     public  init() {
         
-    
-        let result =  OCIEnvCreate(envhpp,
-                                     UInt32(OCI_THREADED),
-                                     nil,
-                                     nil,
-                                     nil,
-                                     nil,
-                                     0,
-                                     nil)
-        print(result)
-          if (result == 0) {
-             print("oi")
-          }
-       print("oi")
-     
+        let usrmempp = UnsafeMutablePointer<UnsafeMutableRawPointer?>.init(nil)
+
+       
+        Error.checkError(result: OCIEnvCreate(UnsafeMutablePointer(mutating: &envhpp),
+                                              UInt32(OCI_DEFAULT),
+                                              nil,
+                                              nil,
+                                              nil,
+                                              nil,
+                                              0,
+                                              usrmempp))
+       
+        
+       
+       Error.checkError(result: OCIHandleAlloc(UnsafeRawPointer.init(envhpp),
+                                               UnsafeMutablePointer(mutating:&errhp),
+                                               UInt32(OCI_HTYPE_ERROR),
+                                               0,
+                                               usrmempp))
+  
+       Error.checkError(result: OCIHandleAlloc(UnsafeRawPointer.init(envhpp),
+                                               UnsafeMutablePointer(mutating:&srvhp),
+                                               UInt32(OCI_HTYPE_SERVER),
+                                               0,
+                                               usrmempp))
+      Error.checkError(result:OCIHandleAlloc(UnsafeRawPointer.init(envhpp),
+                                             UnsafeMutablePointer(mutating:&svchp),
+                                             UInt32(OCI_HTYPE_SVCCTX),
+                                             0,
+                                             usrmempp))
+      Error.checkError(result:OCIHandleAlloc(UnsafeRawPointer.init(envhpp),
+                                             UnsafeMutablePointer(mutating:&usrhp),
+                                             UInt32(OCI_HTYPE_SESSION),
+                                             0,
+                                             usrmempp))
+
+        
     }
     
     public func logoff(){
         
-        checkError(result: OCILogoff (svchp,errhp ))
+        Error.checkError(result: OCILogoff (OpaquePointer(svchp),OpaquePointer(errhp) ))
     }
     public func connect (username:String, password:String,host:String, port:Int,serviceName:String){
         connect(username: username,
@@ -53,15 +75,18 @@ public class  Connection {
     
     public func connect(username:String, password:String, in server:String){
         
-        checkError(result: OCIServerAttach(srvhp , errhp,server, Int32(server.count),UInt32(OCI_DEFAULT)));
         
-       // checkError(result: OCIAttrSet(UnsafeMutableRawPointer(srvhp), UInt32(OCI_HTYPE_SESSION), UnsafeMutableRawPointer(mutating: &username), UInt32(username.count), UInt32(OCI_ATTR_USERNAME),errhp))
+        Error.checkError(result: OCIServerAttach(OpaquePointer(srvhp) , OpaquePointer(errhp),server, Int32(server.count),UInt32(OCI_DEFAULT)));
         
-      
-    //    checkError(result:OCIAttrSet(srvhp, UInt32(OCI_HTYPE_SESSION), UnsafeMutableRawPointer(mutating:  &password), UInt32(password.count), UInt32(OCI_ATTR_PASSWORD),errhp))
+        Error.checkError(result:OCIAttrSet(svchp, UInt32(OCI_HTYPE_SVCCTX), srvhp, 0, UInt32(OCI_ATTR_SERVER),OpaquePointer(errhp)))
+        var buffer = username;
+        Error.checkError(result: OCIAttrSet(usrhp, UInt32(OCI_HTYPE_SESSION), UnsafeMutableRawPointer(mutating: &buffer), UInt32(buffer.count), UInt32(OCI_ATTR_USERNAME),OpaquePointer(errhp)))
+        
+        var buffer1 = password;
+        Error.checkError(result:OCIAttrSet(usrhp, UInt32(OCI_HTYPE_SESSION), UnsafeMutableRawPointer(mutating:  &buffer1), UInt32(buffer1.count), UInt32(OCI_ATTR_PASSWORD),OpaquePointer(errhp)))
 
       
-        checkError(result:OCISessionBegin(svchp, errhp, usrhp, UInt32(OCI_CRED_RDBMS), UInt32(OCI_DEFAULT)))
+        Error.checkError(result:OCISessionBegin(OpaquePointer(svchp), OpaquePointer(errhp), OpaquePointer(usrhp), UInt32(OCI_CRED_RDBMS), UInt32(OCI_DEFAULT)))
         
        
     }
@@ -74,51 +99,17 @@ public class  Connection {
 
     }
     
-    public func checkError(result status:Int32) {
-        var  errbuf = UnsafeMutablePointer<UInt8>.allocate(capacity: 4000)
-        var  buflen:UInt32
-        let  errcode = UnsafeMutablePointer<Int32>.allocate(capacity:1)
-        defer {
-            errbuf.deallocate()
-        }
-     print(status)
-      switch (status) {
-      case OCI_SUCCESS:
-        break;
-      case OCI_SUCCESS_WITH_INFO:
-        print("Error - OCI_SUCCESS_WITH_INFO\n");
-        break;
-      case OCI_NEED_DATA:
-        print("Error - OCI_NEED_DATA\n");
-        break;
-      case OCI_NO_DATA:
-        print("Error - OCI_NO_DATA\n");
-        break;
-      case OCI_ERROR:
-       /* let result =  OCIErrorGet ( errhp,  1, nil, errcode,
-                      errbuf,250 ,UInt32( OCI_HTYPE_ERROR));
-        
-        print("Result \(result) \n");
-        print("Error -errcode \(errcode.pointee) \n");*/
-        let t =  String(cString:errbuf)
-     
-        print("Error - \(t) \n");
-        break;
-      case OCI_INVALID_HANDLE:
-        print("Error - OCI_INVALID_HANDLE\n");
-        break;
-      case OCI_STILL_EXECUTING:
-        print("Error - OCI_STILL_EXECUTE\n");
-        break;
-      case OCI_CONTINUE:
-        print("Error - OCI_CONTINUE\n");
-        break;
-      default:
-        break;
-      }
-    }
     
     func close(){
+        
+        
+    /*
+        if (errhp !=  nil){
+            Error.checkError(result: OCIHandleFree(errhp, UInt32(OCI_HTYPE_ERROR )))
+        }*/
+        
+      
+       
         
     }
     func commit(){
@@ -148,8 +139,38 @@ public class  Connection {
         
         return true
     }
-    func deint(){
-         close()
+    deinit {
+       
+        if (svchp != nil){
+                   Error.checkError(result: OCIHandleFree(svchp, UInt32(OCI_HTYPE_SVCCTX)))
+            svchp = nil
+        }
+        if (srvhp != nil){
+            Error.checkError(result:OCIHandleFree(srvhp, UInt32(OCI_HTYPE_SERVER)))
+            srvhp = nil
+        }
+        if (errhp !=  nil){
+            Error.checkError(result: OCIHandleFree(errhp, UInt32(OCI_HTYPE_ERROR )))
+            errhp = nil
+        }
+       
+        if (usrhp != nil){
+            Error.checkError(result: OCIHandleFree(usrhp, UInt32(OCI_HTYPE_SESSION)))
+            usrhp = nil
+        }
+       
+        
+       if (envhpp != nil){
+                                print("before free envhpp address \(envhpp)")
+                              
+                                Error.checkError(result:OCIHandleFree(UnsafeMutableRawPointer(envhpp), UInt32(OCI_HTYPE_ENV  )))
+                                envhpp = nil
+                                print("after free envhpp address \(envhpp)")
+              }
+        
+       
+        Error.checkError(result:OCITerminate(UInt32(OCI_DEFAULT)))
+        close()
     }
     
     func enableOutput(){

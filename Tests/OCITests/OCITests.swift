@@ -12,4 +12,15 @@ final class OCITests: XCTestCase {
     static var allTests = [
         ("testExample", testExample),
     ]
+    func testConnect(){
+       let connection = Connection()
+        connection.connect(username: "APEX_OFICINA",
+                           password: "QASOTS",
+                           host: "exapbg01-scan",
+                           port: 1523,
+                           serviceName: "QASOTS")
+        let stm  = connection.createStatement()
+        stm.executeQuery(sql:"select * from dual")
+     //   XCTAssertEqual(connection,nil)
+    }
 }
